@@ -1,56 +1,44 @@
 #!/bin/bash
-filewebsite="https://raw.githubusercontent.com/RetroFlag/retroflag-picase/master"
-sleep 2s
-#Step 1) Check if root--------------------------------------
+
+# Step 1) Check if root ####################################
 if [[ $EUID -ne 0 ]]; then
    echo "Please execute script as root." 
    exit 1
 fi
 
+#-----------------------------------------------------------
+
+# Step 2) Go to the right folder ###########################
+cd /storage/
 
 #-----------------------------------------------------------
 
-#Step 3) Update repository----------------------------------
-apt-get update -y
+#Step 3) Download this repository with all files needed ----
 
-sleep 2s
+wget "https://github.com/marcelonovaes/lakka_nespi_power/archive/master.zip"
+
 #-----------------------------------------------------------
 
-#Step 4) Install gpiozero module----------------------------
-apt-get install -y python3-gpiozero
+#Step 4) Unpack files --------------------------------------
 
-sleep 2s
-#-----------------------------------------------------------
+unzip -o master.zip
+cd lakka_nespi_power-master/
+cp -R lib/ /storage/
+mkdir -p /storage/scripts
+cp -R scripts/* /storage/scripts/
 
-#Step 5) Download Python script-----------------------------
-cd /opt/
-mkdir RetroFlag
-cd /opt/RetroFlag
-script=SafeShutdown.py
 
-if [ -e $script ];
-	then
-		wget --no-check-certificate -O  $script "$filewebsite""/SafeShutdown_gpi.py"
-	else
-		wget --no-check-certificate -O  $script "$filewebsite""/SafeShutdown_gpi.py"
+if [ ! -f /storage/.config/autostart.sh ]; then
+    echo "python /storage/scripts/shutdown.py &" >> /storage/.config/autostart.sh
 fi
-#-----------------------------------------------------------
-sleep 2s
-#Step 6) Enable Python script to run on start up------------
-cd /etc/
-RC=rc.local
 
-if grep -q "python3 \/opt\/RetroFlag\/SafeShutdown.py \&" "$RC";
-	then
-		echo "File /etc/rc.local already configured. Doing nothing."
-	else
-		sed -i -e "s/^exit 0/python3 \/opt\/RetroFlag\/SafeShutdown.py \&\n&/g" "$RC"
-		echo "File /etc/rc.local configured."
+if grep -Fxq "shutdown.py" /storage/.config/autostart.sh 
+then
+	echo "not found"
+    echo "python /storage/scripts/shutdown.py &" >> /storage/.config/autostart.sh
+else
+    echo "SUCCESS! Shutdown Script configured!"
+	echo "Installation done. Will now reboot after 3 seconds."
+	sleep 3
+	reboot
 fi
-#-----------------------------------------------------------
-
-#Step 7) Reboot to apply changes----------------------------
-echo "RetroFlag Pi Case installation done. Will now reboot after 3 seconds."
-sleep 3s
-reboot
-#-----------------------------------------------------------
